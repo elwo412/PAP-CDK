@@ -23,6 +23,28 @@ from aws_cdk import (
     Duration
 )
 
+from lib.CICD.PipelineManager import CICDPipelineManager
+from lib.CICD.LambdaFactory import CICDLambdaFactory
+from lib.CICD.NotificationManager import CICDNotificationManager
+
+class CICDStack_v2(Stack):
+    def __init__(self, scope: Construct, construct_id: str, repositories: list, **kwargs) -> None:
+        super().__init__(scope, construct_id, **kwargs)
+
+        artifact_bucket = s3.Bucket(self, "ArtifactBucket", removal_policy=RemovalPolicy.DESTROY)
+        pipeline_manager = CICDPipelineManager(self, artifact_bucket, pipeline_name="RentalPropertiesAgentCICDPipeline", repositories=repositories)
+        pipeline_manager.configure_pipeline()
+
+        lambda_factory = CICDLambdaFactory(self)
+        github_lambda = lambda_factory.create_github_status_lambda(self, pipeline_manager.pipeline.pipeline_arn, artifact_bucket)
+        discord_lambda = lambda_factory.create_discord_notifier_lambda(self, pipeline_manager.pipeline.pipeline_arn)
+
+        notification_manager = CICDNotificationManager(self, pipeline_manager.pipeline.pipeline_name)
+        for repo in repositories:
+            notification_manager.create_build_start_rule(repo, github_lambda)
+            notification_manager.create_build_success_rule(repo, github_lambda, discord_lambda)
+            notification_manager.create_build_failure_rule(repo, github_lambda, discord_lambda)
+
 class CICDStack(Stack):
     
     def __init__(self, scope: Construct, construct_id: str, repositories: list, **kwargs) -> None:

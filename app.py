@@ -3,8 +3,7 @@ import os
 
 import aws_cdk as cdk
 
-from rental_properties_agent_cdk.rental_properties_agent_cdk_stack import RentalPropertiesAgentCdkStack
-from rental_properties_agent_cdk.CICD.CICDStack import CICDStack
+from rental_properties_agent_cdk.CICD.CICDStack import CICDStack, CICDStack_v2
 
 
 app = cdk.App()
@@ -30,6 +29,6 @@ repositories = [
     {"name": "PAP-ui", "owner": "CaerusLabs", "repo_name": "PAP-ui", "branch": "main"},
 ]
 
-CICDStack(app, "CiCdPipeline", repositories=repositories)
+CICDStack_v2(app, "CiCdPipeline", repositories=repositories)
 
 app.synth()
