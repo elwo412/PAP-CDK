@@ -66,7 +66,7 @@ class VPCStack(Stack):
             subnet_selection=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             security_group=bastion_sg,
             instance_type=ec2.InstanceType("t3.micro"),
-        )
+        ) # need to add key pair manaully by first using ssm to access, and then create public key to the ec2-user authorized_keys file and restart sshd
 
         # Retrieve the RDS password from Secrets Manager
         password_secret_value = secretsmanager.Secret.from_secret_complete_arn(

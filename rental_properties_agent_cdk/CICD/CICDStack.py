@@ -28,11 +28,11 @@ from lib.CICD.LambdaFactory import CICDLambdaFactory
 from lib.CICD.NotificationManager import CICDNotificationManager
 
 class CICDStack_v2(Stack):
-    def __init__(self, scope: Construct, construct_id: str, repositories: list, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, repositories: list, website_bucket: s3.Bucket, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         artifact_bucket = s3.Bucket(self, "ArtifactBucket", removal_policy=RemovalPolicy.DESTROY)
-        pipeline_manager = CICDPipelineManager(self, artifact_bucket, pipeline_name="RentalPropertiesAgentCICDPipeline", repositories=repositories)
+        pipeline_manager = CICDPipelineManager(self, artifact_bucket, pipeline_name="RentalPropertiesAgentCICDPipeline", repositories=repositories, website_bucket=website_bucket)
         pipeline_manager.configure_pipeline()
 
         lambda_factory = CICDLambdaFactory(self)

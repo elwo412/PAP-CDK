@@ -10,11 +10,12 @@ from aws_cdk import (
 from constructs import Construct
 
 class CICDPipelineManager(AbstractPipelineManager):
-    def __init__(self, scope, artifact_bucket, pipeline_name, repositories):
+    def __init__(self, scope, artifact_bucket, pipeline_name, repositories, website_bucket: s3.Bucket):
         super().__init__(scope, artifact_bucket, pipeline_name)
         self.create_pipeline()
         self.repositories = repositories
         self.stage_manager = CICDStageManager(self._pipeline, scope)
+        self.website_bucket = website_bucket
         
     def configure_pipeline(self):
         """
@@ -29,6 +30,8 @@ class CICDPipelineManager(AbstractPipelineManager):
             self.stage_manager.add_source_stage(repo)
             self.stage_manager.add_manual_approval_stage()
             self.stage_manager.add_build_stage(repo)
+            if repo.get('type') == 'frontend':
+                self.stage_manager.add_deploy_stage(repo, self.website_bucket)
             
     @property
     def pipeline(self):
@@ -38,6 +41,7 @@ class CICDPipelineManager(AbstractPipelineManager):
 class CICDStageManager(AbstractStageManager):
     def __init__(self, pipeline: codepipeline.Pipeline, scope: Construct):
         super().__init__(pipeline, scope)
+        self.build_artifact_out = codepipeline.Artifact()
     
     def add_source_stage(self, repo: dict):
         CI_action_name = f"{repo['name']}_Source"
@@ -60,13 +64,20 @@ class CICDStageManager(AbstractStageManager):
         })
 
     def add_build_stage(self, repo: dict):
-        build_project = codebuild.PipelineProject(self._scope, f"{repo['name']}BuildProject",
-            build_spec=self.create_build_spec())
+        self.build_artifact_out = codepipeline.Artifact(f"{repo['name']}_BuildOutput")
+        build_project = codebuild.PipelineProject(
+            self._scope, 
+            f"{repo['name']}BuildProject",
+            build_spec=self.create_build_spec(), 
+            environment=codebuild.BuildEnvironment(
+                build_image=codebuild.LinuxBuildImage.STANDARD_7_0
+            )
+        )
         build_action = codepipeline_actions.CodeBuildAction(
             action_name=f"{repo['name']}_Build",
             project=build_project,
             input=repo['source_output'],
-            outputs=[codepipeline.Artifact(f"{repo['name']}_BuildOutput")]
+            outputs=[self.build_artifact_out]
         )
         self._pipeline.add_stage(stage_name=f"{repo['name']}_BuildStage", actions=[build_action])
         repo['build_project_name'] = build_project.project_name
@@ -82,31 +93,74 @@ class CICDStageManager(AbstractStageManager):
             actions=[manual_approval_action]
         )
         
+    def add_deploy_stage(self, repo: dict, website_bucket: s3.Bucket):
+        deploy_action = codepipeline_actions.S3DeployAction(
+            action_name=f"{repo['name']}Deploy",
+            input=self.build_artifact_out,
+            bucket=website_bucket,
+            extract=True
+        )
+        self._pipeline.add_stage(stage_name=f"{repo['name']}DeployStage", actions=[deploy_action])
+        
     def create_build_spec(self):
+        # return codebuild.BuildSpec.from_object({
+        #     "version": "0.2",
+        #     "phases": {
+        #         "install": {
+        #             "runtime-versions": {
+        #                 "python": "3.8"
+        #             },
+        #             "commands": [
+        #                 "echo Installing necessary packages...",
+        #                 #"pip install -r requirements.txt" # example install command
+        #             ]
+        #         },
+        #         "pre_build": {
+        #             "commands": [
+        #                 "echo Preparing build...",
+        #                 #"pytest tests/" # example test command
+        #             ]
+        #         },
+        #         "build": {
+        #             "commands": [
+        #                 "echo Starting build...",
+        #                 #"sam build" # example build command
+        #             ]
+        #         }
+        #     },
+        #     "artifacts": {"files": []}
+        # })        
         return codebuild.BuildSpec.from_object({
             "version": "0.2",
             "phases": {
                 "install": {
                     "runtime-versions": {
-                        "python": "3.8"
+                        "nodejs": "18"  # Nuxt 3 supports Node.js 14 or later; using 16 as an example
                     },
                     "commands": [
-                        "echo Installing necessary packages...",
-                        #"pip install -r requirements.txt" # example install command
+                        "echo Installing Node.js dependencies...",
+                        "npm install -g npm@latest",
+                        "npm install",
+                        "npm run postinstall"  # Ensure all necessary preparations are made
                     ]
                 },
                 "pre_build": {
                     "commands": [
-                        "echo Preparing build...",
-                        #"pytest tests/" # example test command
+                        "echo Running tests...",
+                        # Add commands to run tests if required
                     ]
                 },
                 "build": {
                     "commands": [
-                        "echo Starting build...",
-                        #"sam build" # example build command
+                        "echo Building the Nuxt application...",
+                        "npx nuxi generate",
                     ]
                 }
             },
-            "artifacts": {"files": []}
-        })        
+            "artifacts": {
+                "base-directory": ".output/public",  # Nuxt 3 output directory for `nuxt generate` or `nuxt build`
+                "files": [
+                    "**/*"
+                ]
+            }
+        })

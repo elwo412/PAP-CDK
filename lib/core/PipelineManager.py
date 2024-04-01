@@ -40,3 +40,6 @@ class AbstractStageManager(ABC):
     @abstractmethod
     def add_manual_approval_stage(self):
         pass
+    
+    def add_deploy_stage(self, repo, website_bucket):
+        raise NotImplementedError

@@ -5,6 +5,7 @@ import aws_cdk as cdk
 
 from rental_properties_agent_cdk.CICD.CICDStack import CICDStack, CICDStack_v2
 from lib.VPC.VPCStack import VPCStack
+from lib.WEB.WebsiteStack import WebsiteStack
 
 
 app = cdk.App()
@@ -27,10 +28,12 @@ app = cdk.App()
 #     )
 
 repositories = [
-    {"name": "PAP-ui", "owner": "CaerusLabs", "repo_name": "PAP-ui", "branch": "main"},
+    {"name": "PAP-ui", "owner": "CaerusLabs", "repo_name": "PAP-ui", "branch": "main", "type": "frontend"},
 ]
 
-CICDStack_v2(app, "CiCdPipeline", repositories=repositories)
+devwebstack = WebsiteStack(app, "DevWebsiteStack")
+dev_site_s3_bucket = devwebstack.website_bucket
+CICDStack_v2(app, "CiCdPipeline", repositories=repositories, website_bucket=dev_site_s3_bucket)
 VPCStack(app, "VPCCDKStack")
 
 app.synth()
