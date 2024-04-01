@@ -23,3 +23,7 @@ cdk.out/
 
 # Distribution / packaging
 **/package/
+
+# RSA keys
+*.pem
+*rsa*

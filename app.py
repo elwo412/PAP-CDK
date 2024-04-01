@@ -4,6 +4,7 @@ import os
 import aws_cdk as cdk
 
 from rental_properties_agent_cdk.CICD.CICDStack import CICDStack, CICDStack_v2
+from lib.VPC.VPCStack import VPCStack
 
 
 app = cdk.App()
@@ -30,5 +31,6 @@ repositories = [
 ]
 
 CICDStack_v2(app, "CiCdPipeline", repositories=repositories)
+VPCStack(app, "VPCCDKStack")
 
 app.synth()
