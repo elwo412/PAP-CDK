@@ -27,3 +27,8 @@ cdk.out/
 # RSA keys
 *.pem
 *rsa*
+
+# Secrets
+*secret.json
+*secrets.json
+*.key

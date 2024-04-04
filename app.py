@@ -31,7 +31,7 @@ repositories = [
     {"name": "PAP-ui", "owner": "CaerusLabs", "repo_name": "PAP-ui", "branch": "main", "type": "frontend"},
 ]
 
-devwebstack = WebsiteStack(app, "DevWebsiteStack")
+devwebstack = WebsiteStack(app, "DevWebsiteStack", updateRefererSecret=True)
 dev_site_s3_bucket = devwebstack.website_bucket
 CICDStack_v2(app, "CiCdPipeline", repositories=repositories, website_bucket=dev_site_s3_bucket)
 VPCStack(app, "VPCCDKStack")

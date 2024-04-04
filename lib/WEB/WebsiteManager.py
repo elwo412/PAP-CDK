@@ -8,15 +8,21 @@ from aws_cdk import (
     RemovalPolicy,
     aws_cognito as cognito,
     aws_iam as iam,
-    Stack
+    Stack,
+    Duration
 )
 from constructs import Construct
-import secrets
+import secrets, os, json
+from lib.core.SecretsManager import SecretManager
 
 class WebsiteManager(WebsiteManagerAbstract):
-    def __init__(self, scope):
+    def __init__(self, scope, updateReferer):
         super().__init__(scope)
-        self.secret_referer_value = secrets.token_hex(16)
+        sm = SecretManager()
+        if updateReferer:
+            sm.update_secret("REFERER_SECRET", secrets.token_urlsafe(32))
+        
+        self.secret_referer_value = sm.get_secret("REFERER_SECRET")
     
     def setup_s3(self):
         self.bucket = s3.Bucket(self.scope, "DevWebsiteBucket",
@@ -49,12 +55,21 @@ class WebsiteManager(WebsiteManagerAbstract):
 
         # Grant read access to the OAI on the S3 bucket
         self.bucket.grant_read(oai)
+        
+        # Define a cache policy for development
+        cache_policy = cloudfront.CachePolicy(self.scope, "DevCachePolicy",
+            max_ttl=Duration.minutes(10),
+            default_ttl=Duration.minutes(5),
+            min_ttl=Duration.seconds(0),
+            comment="Cache policy for development environment"
+        )
 
         # Create a CloudFront distribution with the OAI
         self.distribution = cloudfront.Distribution(self.scope, "DevDistribution",
             default_behavior=cloudfront.BehaviorOptions(
                 origin=origins.S3Origin(self.bucket, origin_access_identity=oai, custom_headers={"Referer": self.secret_referer_value}),
                 viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                cache_policy=cache_policy
             ),
         )
 

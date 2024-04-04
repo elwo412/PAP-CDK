@@ -153,7 +153,7 @@ class CICDStageManager(AbstractStageManager):
                 "build": {
                     "commands": [
                         "echo Building the Nuxt application...",
-                        "npx nuxi generate",
+                        "npm run generate:dev",
                     ]
                 }
             },

@@ -12,10 +12,10 @@ from constructs import Construct
 from lib.WEB.WebsiteManager import WebsiteManager
 
 class WebsiteStack(Stack):
-    def __init__(self, scope: Construct, id: str, **kwargs):
+    def __init__(self, scope: Construct, id: str, updateRefererSecret: bool = True, **kwargs):
         super().__init__(scope, id, **kwargs)
         
-        self.website_manager = WebsiteManager(self)
+        self.website_manager = WebsiteManager(self, updateReferer=updateRefererSecret)
 
         self.website_manager.setup_s3()
         self.website_manager.setup_cloudfront()
