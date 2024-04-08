@@ -1,4 +1,4 @@
-from lib.core.NotificationManager import AbstractNotificationManager
+from src.core.abstracts.notification_manager import AbstractNotificationManager
 from aws_cdk import (
     Stack,
     aws_codepipeline as codepipeline,
@@ -15,7 +15,7 @@ from aws_cdk import (
     Duration
 )
 
-class CICDNotificationManager(AbstractNotificationManager):
+class NotificationManager(AbstractNotificationManager):
     
     def __init__(self, scope, pipeline_name):
         super().__init__(scope, pipeline_name)

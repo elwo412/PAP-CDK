@@ -1,4 +1,4 @@
-from lib.core.LambdaFactory import AbstractLambdaFactory
+from src.core.abstracts.lambda_factory import AbstractLambdaFactory
 from aws_cdk import (
     Stack,
     aws_codepipeline as codepipeline,
@@ -16,12 +16,12 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-class CICDLambdaFactory(AbstractLambdaFactory):
+class LambdaFactory(AbstractLambdaFactory):
     def __init__(self, scope: Construct):
         super().__init__(scope)
         
     def create_github_status_lambda(self, scope, codepipeline_arn: str, artifact_bucket: s3.Bucket):
-        source_dir = "lib/CICD/Assets/lambda/github_status"
+        source_dir = "src/cicd/assets/lambda/github_status"
         self.create_package_directory(source_dir)
         github_status_lambda: lambda_.Function = self.create_lambda(
             id="GithubStatusNotifier",
@@ -54,7 +54,7 @@ class CICDLambdaFactory(AbstractLambdaFactory):
         return github_status_lambda
 
     def create_discord_notifier_lambda(self, scope, codepipeline_arn):
-        source_dir = "lib/CICD/Assets/lambda/discord_notifier"
+        source_dir = "src/cicd/assets/lambda/discord_notifier"
         self.create_package_directory(source_dir)
         discord_notifier : lambda_.Function = self.create_lambda(
             id="DiscordNotifier",

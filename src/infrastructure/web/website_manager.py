@@ -1,4 +1,4 @@
-from lib.core.WebsiteManager import WebsiteManagerAbstract
+from src.core.abstracts.website_manager import WebsiteManagerAbstract
 from aws_cdk import (
     aws_s3 as s3,
     aws_cloudfront as cloudfront,
@@ -13,7 +13,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 import secrets, os, json
-from lib.core.SecretsManager import SecretManager
+from src.core.secrets_manager import SecretManager
 
 class WebsiteManager(WebsiteManagerAbstract):
     def __init__(self, scope, updateReferer):

@@ -9,7 +9,7 @@ from aws_cdk import (
     Stack
 )
 from constructs import Construct
-from lib.WEB.WebsiteManager import WebsiteManager
+from src.infrastructure.web.website_manager import WebsiteManager
 
 class WebsiteStack(Stack):
     def __init__(self, scope: Construct, id: str, updateRefererSecret: bool = True, **kwargs):
