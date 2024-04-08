@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 import os
-
+from dotenv import load_dotenv
 import aws_cdk as cdk
 
 from rental_properties_agent_cdk.CICD.CICDStack import CICDStack, CICDStack_v2
 from lib.VPC.VPCStack import VPCStack
 from lib.WEB.WebsiteStack import WebsiteStack
 
+# Load environment variables from .env file
+load_dotenv()
+
+# Fetch account and region from environment variables
+account = os.environ.get('AWS_ACCOUNT_ID')
+region = os.environ.get('AWS_REGION')
 
 app = cdk.App()
 # RentalPropertiesAgentCdkStack(app, "RentalPropertiesAgentCdkStack",
@@ -31,9 +37,9 @@ repositories = [
     {"name": "PAP-ui", "owner": "CaerusLabs", "repo_name": "PAP-ui", "branch": "main", "type": "frontend"},
 ]
 
-devwebstack = WebsiteStack(app, "DevWebsiteStack", updateRefererSecret=True)
+devwebstack = WebsiteStack(app, "DevWebsiteStack", updateRefererSecret=True, env={'account': account, 'region': region})
 dev_site_s3_bucket = devwebstack.website_bucket
-CICDStack_v2(app, "CiCdPipeline", repositories=repositories, website_bucket=dev_site_s3_bucket)
-VPCStack(app, "VPCCDKStack")
+CICDStack_v2(app, "CiCdPipeline", repositories=repositories, website_bucket=dev_site_s3_bucket, env={'account': account, 'region': region})
+VPCStack(app, "VPCCDKStack", env={'account': account, 'region': region})
 
 app.synth()

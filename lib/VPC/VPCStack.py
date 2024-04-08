@@ -18,10 +18,16 @@ from aws_cdk import (
 )
 from constructs import Construct
 import boto3, json
+from cdk_fck_nat import FckNatInstanceProvider
 
 class VPCStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs):
         super().__init__(scope, id, **kwargs)
+        
+        # Define the FckNatInstanceProvider
+        nat_instance_provider = FckNatInstanceProvider(
+            instance_type=ec2.InstanceType("t4g.micro")
+        )
 
         # Define the VPC
         vpc = ec2.Vpc(
@@ -32,7 +38,14 @@ class VPCStack(Stack):
                 ec2.SubnetConfiguration(name="PublicSubnet", subnet_type=ec2.SubnetType.PUBLIC),
                 ec2.SubnetConfiguration(name="PrivateSubnet", subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT)
             ],
-            nat_gateways=1
+            nat_gateway_provider=nat_instance_provider
+        )
+        
+        # Add ingress rule to NAT instance's security group
+        nat_instance_provider.connections.security_groups[0].add_ingress_rule(
+            ec2.Peer.ipv4(vpc.vpc_cidr_block),
+            ec2.Port.all_traffic(),
+            "Allow all traffic from within the VPC"
         )
 
         # Define the Bastion Host Security Group
