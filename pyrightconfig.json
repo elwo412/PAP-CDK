@@ -1,0 +1,12 @@
+{
+    "include" : [
+        "src/**/*.py"
+    ],
+    "exclude": [
+        "src/**/tests/*",
+        ".venv/**/*",
+        "cdk.out/**/*",
+        "env/**/*",
+        "src/**/package/*",
+    ],
+}
