@@ -19,15 +19,15 @@ from aws_cdk import (
 from constructs import Construct
 import boto3, json
 from cdk_fck_nat import FckNatInstanceProvider
+from src.infrastructure.vpc.nat_provider import NatProvider
+from src.infrastructure.vpc.bastion_host import BastionHost
+from src.infrastructure.rds.rds_instance import RdsInstance
 
 class VPCStack(Stack):
     def __init__(self, scope: Construct, id: str, **kwargs):
         super().__init__(scope, id, **kwargs)
         
-        # Define the FckNatInstanceProvider
-        nat_instance_provider = FckNatInstanceProvider(
-            instance_type=ec2.InstanceType("t4g.micro")
-        )
+        nat_provider = NatProvider(self, id="Nat Provider", instance_type="t4g.micro")
 
         # Define the VPC
         vpc = ec2.Vpc(
@@ -38,75 +38,16 @@ class VPCStack(Stack):
                 ec2.SubnetConfiguration(name="PublicSubnet", subnet_type=ec2.SubnetType.PUBLIC),
                 ec2.SubnetConfiguration(name="PrivateSubnet", subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT)
             ],
-            nat_gateway_provider=nat_instance_provider
+            nat_gateway_provider=nat_provider.instance
         )
         
         # Add ingress rule to NAT instance's security group
-        nat_instance_provider.connections.security_groups[0].add_ingress_rule(
+        nat_provider.add_ingress_rule(
             ec2.Peer.ipv4(vpc.vpc_cidr_block),
             ec2.Port.all_traffic(),
             "Allow all traffic from within the VPC"
         )
-
-        # Define the Bastion Host Security Group
-        bastion_sg = ec2.SecurityGroup(
-            self, "BastionSecurityGroup",
-            vpc=vpc,
-            allow_all_outbound=True
-        )
-        bastion_sg.add_ingress_rule(
-            ec2.Peer.ipv4("68.162.149.11/32"),
-            ec2.Port.tcp(22),
-            "Allow SSH access from the specified IP address"
-        )
-
-        # Define the RDS Security Group
-        rds_sg = ec2.SecurityGroup(
-            self, "RDSSecurityGroup",
-            vpc=vpc,
-            allow_all_outbound=True
-        )
-        rds_sg.add_ingress_rule(
-            bastion_sg,
-            ec2.Port.tcp(5432),
-            "Allow PostgreSQL access from the bastion host"
-        )
-
-        # Define the Bastion Host
-        bastion_host = ec2.BastionHostLinux(
-            self, "BastionHost",
-            vpc=vpc,
-            subnet_selection=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-            security_group=bastion_sg,
-            instance_type=ec2.InstanceType("t3.micro"),
-        ) # need to add key pair manaully by first using ssm to access, and then create public key to the ec2-user authorized_keys file and restart sshd
-
-        # Retrieve the RDS password from Secrets Manager
-        password_secret_value = secretsmanager.Secret.from_secret_complete_arn(
-            self, "DBSecret",
-            "arn:aws:secretsmanager:us-east-1:260374441616:secret:dbdev/psql/credentials-LT8Z1W"
-        ).secret_value_from_json("password")
-
-        # Create the credentials
-        secret_creds_db = rds.Credentials.from_username("postgreAdmin", password=password_secret_value)
-
-        # Define the RDS instance
-        instance = rds.DatabaseInstance(
-            self, "MyRDSInstance",
-            engine=rds.DatabaseInstanceEngine.postgres(
-                version=rds.PostgresEngineVersion.VER_15_4
-            ),
-            vpc=vpc,
-            credentials=secret_creds_db,
-            database_name="dev",
-            instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.MICRO),
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT),
-            security_groups=[rds_sg]
-        )
-
-        # CloudWatch log group for the bastion host
-        aws_logs.LogGroup(
-            self, "BastionHostLogGroup",
-            log_group_name=f"/aws/ec2/bastion/{bastion_host.instance_id}",
-            retention=aws_logs.RetentionDays.ONE_MONTH
-        )
+        
+        
+        bastion_host = BastionHost(self, "BastionHost", vpc=vpc)
+        rds_instance = RdsInstance(self, "RdsInstance", vpc=vpc, bastion_sg=bastion_host.security_group)
