@@ -1,6 +1,7 @@
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_rds as rds
 from aws_cdk import aws_secretsmanager as secretsmanager
+from aws_cdk import RemovalPolicy
 from constructs import Construct
 
 class RdsInstance(Construct):
@@ -26,7 +27,8 @@ class RdsInstance(Construct):
         ).secret_value_from_json("password")
 
         # Create the credentials
-        secret_creds_db = rds.Credentials.from_username("postgreAdmin", password=password_secret_value)
+        #secret_creds_db = rds.Credentials.from_username("postgreAdmin", password=password_secret_value)
+        secret_creds_db = rds.Credentials.from_generated_secret("postgreAdmin", secret_name="dbdev/psql/credentials-LT8Z1W")
 
         # Define the RDS instance
         self.instance = rds.DatabaseInstance(
@@ -39,5 +41,6 @@ class RdsInstance(Construct):
             database_name="dev",
             instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.MICRO),
             vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT),
-            security_groups=[rds_sg]
+            security_groups=[rds_sg],
+            removal_policy=RemovalPolicy.RETAIN
         )

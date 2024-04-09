@@ -29,6 +29,12 @@ class BastionHost(Construct):
             subnet_selection=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
             security_group=bastion_sg,
             instance_type=ec2.InstanceType("t3.micro"),
+            block_devices=[
+                ec2.BlockDevice(
+                    device_name="/dev/xvda",
+                    volume=ec2.BlockDeviceVolume.ebs(100)
+                )
+            ]
         )
 
         # CloudWatch log group for the Bastion Host
