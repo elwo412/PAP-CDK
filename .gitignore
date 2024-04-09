@@ -32,3 +32,6 @@ cdk.out/
 *secret.json
 *secrets.json
 *.key
+
+# Vscode
+.vscode/launch.json
