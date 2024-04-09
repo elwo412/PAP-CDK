@@ -2,6 +2,8 @@
 import os
 import aws_cdk as cdk
 from scripts.load_env import load_environmental_vars
+from src.cicd.pipeline_manager import StageManagerWeb
+from src.core.models.repository import Repository
 
 from src.stacks.cicd_stack import CICDStack
 from src.stacks.vpc_stack import VPCStack
@@ -18,9 +20,16 @@ env = cdk.Environment(account=account, region=region)
 
 app = cdk.App()
 
-repositories = [
-    {"name": "PAP-ui", "owner": "CaerusLabs", "repo_name": "PAP-ui", "branch": "main", "type": "frontend"},
-]
+repositories = {
+    "dev-website-repo": Repository(
+        name="PAP-ui",
+        owner="CaerusLabs",
+        repo_name="PAP-ui",
+        branch="main",
+        deployable=True,
+        stageType=StageManagerWeb
+    )
+}
 
 devWebStack = WebsiteStack(app, "DevWebsiteStack", updateRefererSecret=False, env=env)
 dev_site_s3_bucket = devWebStack.website_bucket
