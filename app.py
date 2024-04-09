@@ -27,4 +27,6 @@ dev_site_s3_bucket = devwebstack.website_bucket
 CICDStack(app, "CiCdPipeline", repositories=repositories, website_bucket=dev_site_s3_bucket, env=env)
 VPCStack(app, "VPCCDKStack", env=env)
 
+cdk.Tags.of(app).add("Project", "RentalPropertiesAgent")
+
 app.synth()
