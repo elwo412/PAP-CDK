@@ -22,10 +22,15 @@ repositories = [
     {"name": "PAP-ui", "owner": "CaerusLabs", "repo_name": "PAP-ui", "branch": "main", "type": "frontend"},
 ]
 
-devwebstack = WebsiteStack(app, "DevWebsiteStack", updateRefererSecret=False, env=env)
-dev_site_s3_bucket = devwebstack.website_bucket
-CICDStack(app, "CiCdPipeline", repositories=repositories, website_bucket=dev_site_s3_bucket, env=env)
-VPCStack(app, "VPCCDKStack", env=env)
+devWebStack = WebsiteStack(app, "DevWebsiteStack", updateRefererSecret=False, env=env)
+dev_site_s3_bucket = devWebStack.website_bucket
+cdk.Tags.of(devWebStack).add("AppManagerCFNStackKey", "DevelopmentWebApp")
+
+cicdStack = CICDStack(app, "CiCdPipeline", repositories=repositories, website_bucket=dev_site_s3_bucket, env=env)
+cdk.Tags.of(cicdStack).add("AppManagerCFNStackKey", "CiCdPipeline")
+
+vpcStack = VPCStack(app, "VPCCDKStack", env=env)
+cdk.Tags.of(vpcStack).add("AppManagerCFNStackKey", "DevelopmentVPC")
 
 cdk.Tags.of(app).add("Project", "RentalPropertiesAgent")
 
