@@ -18,8 +18,8 @@ from src.core.models.repository import Repository
 
 class NotificationManager(AbstractNotificationManager):
     
-    def __init__(self, scope, pipeline_name):
-        super().__init__(scope, pipeline_name)
+    def __init__(self, scope):
+        super().__init__(scope)
 
     def create_build_success_rule(self, repo: Repository, github_lambda, discord_lambda):
         rule_id = f"{repo.name}BuildSuccessRule"
@@ -36,7 +36,7 @@ class NotificationManager(AbstractNotificationManager):
             "repo_name": repo.repo_name,
             "status": "success",
             "context": "CodeBuild",
-            "pipeline_name": self.pipeline_name,
+            "pipeline_name": repo.pipeline_name,
             "source_stage_name": repo.source_stage_name,
             "source_action_name": repo.source_action_name,
         }))
@@ -46,7 +46,7 @@ class NotificationManager(AbstractNotificationManager):
             "message": f"Build Succeeded for {repo.repo_name}",
             "status": "success",
             "context": "CodeBuild",
-            "pipeline_name": self.pipeline_name,
+            "pipeline_name": repo.pipeline_name,
             "source_stage_name": repo.source_stage_name,
             "source_action_name": repo.source_action_name,
         }))
@@ -69,7 +69,7 @@ class NotificationManager(AbstractNotificationManager):
             "repo_name": repo.repo_name,
             "status": "failure",
             "context": "CodeBuild",
-            "pipeline_name": self.pipeline_name,
+            "pipeline_name": repo.pipeline_name,
             "source_stage_name": repo.source_stage_name,
             "source_action_name": repo.source_action_name,
         }))
@@ -78,7 +78,7 @@ class NotificationManager(AbstractNotificationManager):
             "message": f"Build Failed for {repo.repo_name}",
             "status": "failure",
             "context": "CodeBuild",
-            "pipeline_name": self.pipeline_name,
+            "pipeline_name": repo.pipeline_name,
             "source_stage_name": repo.source_stage_name,
             "source_action_name": repo.source_action_name,
         }))
@@ -100,7 +100,7 @@ class NotificationManager(AbstractNotificationManager):
             "repo_name": repo.repo_name,
             "status": "pending",
             "context": "CodeBuild",
-            "pipeline_name": self.pipeline_name,
+            "pipeline_name": repo.pipeline_name,
             "source_stage_name": repo.source_stage_name,
             "source_action_name": repo.source_action_name,
         }))

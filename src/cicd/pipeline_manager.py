@@ -51,7 +51,7 @@ class StageManagerWeb(AbstractStageManager):
         source_output = codepipeline.Artifact()
         source_action = codepipeline_actions.CodeStarConnectionsSourceAction(
             action_name=CI_action_name,
-            connection_arn="arn:aws:codestar-connections:us-east-2:260374441616:connection/b31b9d20-3949-4c6a-b379-df087079cba6", #aws codestar-connections list-connections
+            connection_arn=repo.code_star_connection_arn,
             owner=repo.owner,
             repo=repo.repo_name,
             output=source_output,

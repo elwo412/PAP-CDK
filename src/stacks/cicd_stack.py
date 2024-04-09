@@ -38,10 +38,12 @@ class CICDStack(Stack):
         pipeline_manager_web.configure_pipeline()
 
         lambda_factory = LambdaFactory(self)
-        github_lambda = lambda_factory.create_github_status_lambda(self, pipeline_manager_web.pipeline.pipeline_arn, artifact_bucket_web)
-        discord_lambda = lambda_factory.create_discord_notifier_lambda(self, pipeline_manager_web.pipeline.pipeline_arn)
+        github_lambda = lambda_factory.create_github_status_lambda(self, [pipeline_manager_web.pipeline.pipeline_arn], [artifact_bucket_web])
+        discord_lambda = lambda_factory.create_discord_notifier_lambda(self, [pipeline_manager_web.pipeline.pipeline_arn])
+        
+        dev_web_repo_info.pipeline_name = pipeline_manager_web.pipeline.pipeline_name
 
-        notification_manager = NotificationManager(self, pipeline_manager_web.pipeline.pipeline_name)
+        notification_manager = NotificationManager(self)
         notification_manager.create_build_start_rule(dev_web_repo_info, github_lambda)
         notification_manager.create_build_success_rule(dev_web_repo_info, github_lambda, discord_lambda)
         notification_manager.create_build_failure_rule(dev_web_repo_info, github_lambda, discord_lambda)

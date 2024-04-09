@@ -27,7 +27,8 @@ repositories = {
         repo_name="PAP-ui",
         branch="main",
         deployable=True,
-        stageType=StageManagerWeb
+        stageType=StageManagerWeb,
+        code_star_connection_arn="arn:aws:codestar-connections:us-east-2:260374441616:connection/b31b9d20-3949-4c6a-b379-df087079cba6"  #aws codestar-connections list-connections
     )
 }
 

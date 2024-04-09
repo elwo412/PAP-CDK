@@ -15,12 +15,13 @@ from aws_cdk import (
     Duration
 )
 from constructs import Construct
+from typing import List
 
 class LambdaFactory(AbstractLambdaFactory):
     def __init__(self, scope: Construct):
         super().__init__(scope)
         
-    def create_github_status_lambda(self, scope, codepipeline_arn: str, artifact_bucket: s3.Bucket):
+    def create_github_status_lambda(self, scope, codepipeline_arns: List[str], artifact_buckets: List[s3.Bucket]):
         source_dir = "src/cicd/assets/lambda/github_status"
         self.create_package_directory(source_dir)
         github_status_lambda: lambda_.Function = self.create_lambda(
@@ -37,7 +38,7 @@ class LambdaFactory(AbstractLambdaFactory):
         # Add the necessary permission to the Lambda function's execution role
         github_status_lambda.role.add_to_policy(iam.PolicyStatement(
             actions=["codepipeline:GetPipelineState"],
-            resources=[codepipeline_arn]
+            resources=codepipeline_arns
         ))
         
         github_status_lambda.role.add_to_policy(iam.PolicyStatement(
@@ -46,14 +47,15 @@ class LambdaFactory(AbstractLambdaFactory):
         ))
         
         # Grant read access to the artifact bucket
-        artifact_bucket.grant_read(github_status_lambda)
+        for artifact_bucket in artifact_buckets:
+            artifact_bucket.grant_read(github_status_lambda)
 
-        # Explicitly set the dependency on the S3 bucket
-        github_status_lambda.node.add_dependency(artifact_bucket)
+            # Explicitly set the dependency on the S3 bucket
+            github_status_lambda.node.add_dependency(artifact_bucket)
 
         return github_status_lambda
 
-    def create_discord_notifier_lambda(self, scope, codepipeline_arn):
+    def create_discord_notifier_lambda(self, scope, codepipeline_arns: List[str]):
         source_dir = "src/cicd/assets/lambda/discord_notifier"
         self.create_package_directory(source_dir)
         discord_notifier : lambda_.Function = self.create_lambda(
@@ -70,7 +72,7 @@ class LambdaFactory(AbstractLambdaFactory):
         # Add the necessary permission to the Lambda function's execution role
         discord_notifier.role.add_to_policy(iam.PolicyStatement(
             actions=["codepipeline:GetPipelineState"],
-            resources=[codepipeline_arn]
+            resources=codepipeline_arns
         ))
     
         discord_notifier.role.add_to_policy(iam.PolicyStatement(

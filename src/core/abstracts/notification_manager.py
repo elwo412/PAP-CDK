@@ -4,9 +4,8 @@ from aws_cdk import (
 )
 
 class AbstractNotificationManager(ABC):
-    def __init__(self, scope, pipeline_name):
+    def __init__(self, scope):
         self.scope = scope
-        self.pipeline_name = pipeline_name
 
     def create_notification_rule(self, event_name, target_actions, additional_info=None) -> events.Rule:
         """

@@ -10,10 +10,12 @@ class Repository(BaseModel):
     branch: str
     deployable: bool
     stageType: Type[AbstractStageManager]
+    code_star_connection_arn: str
     source_output: Artifact = None
     source_action_name: str = None
     source_stage_name: str = None
     build_project_name: str = None
+    pipeline_name: str = None
     
     class Config:
         arbitrary_types_allowed = True
