@@ -1,4 +1,4 @@
-from lib.core.PipelineManager import AbstractPipelineManager, AbstractStageManager
+from src.core.abstracts.pipeline_manager import AbstractPipelineManager, AbstractStageManager
 from aws_cdk import (
     Stack,
     aws_codepipeline as codepipeline,
@@ -9,12 +9,12 @@ from aws_cdk import (
 )
 from constructs import Construct
 
-class CICDPipelineManager(AbstractPipelineManager):
+class PipelineManager(AbstractPipelineManager):
     def __init__(self, scope, artifact_bucket, pipeline_name, repositories, website_bucket: s3.Bucket):
         super().__init__(scope, artifact_bucket, pipeline_name)
         self.create_pipeline()
         self.repositories = repositories
-        self.stage_manager = CICDStageManager(self._pipeline, scope)
+        self.stage_manager = StageManager(self._pipeline, scope)
         self.website_bucket = website_bucket
         
     def configure_pipeline(self):
@@ -38,7 +38,7 @@ class CICDPipelineManager(AbstractPipelineManager):
         return self._pipeline
             
             
-class CICDStageManager(AbstractStageManager):
+class StageManager(AbstractStageManager):
     def __init__(self, pipeline: codepipeline.Pipeline, scope: Construct):
         super().__init__(pipeline, scope)
         self.build_artifact_out = codepipeline.Artifact()
