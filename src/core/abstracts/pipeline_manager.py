@@ -15,7 +15,7 @@ class AbstractPipelineManager(ABC):
 
     def create_pipeline(self):
         self._pipeline = codepipeline.Pipeline(
-            self.scope, "Pipeline",
+            self.scope, f"RPA_{self.pipeline_name}",
             artifact_bucket=self.artifact_bucket,
             pipeline_name=self.pipeline_name
         )
@@ -41,5 +41,5 @@ class AbstractStageManager(ABC):
     def add_manual_approval_stage(self):
         pass
     
-    def add_deploy_stage(self, repo, website_bucket):
+    def add_deploy_stage(self):
         raise NotImplementedError
