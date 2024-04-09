@@ -23,7 +23,7 @@ from aws_cdk import (
     Duration
 )
 
-from src.cicd.pipeline_manager import PipelineManager, StageManagerWeb
+from src.cicd.pipeline_manager import PipelineManager
 from src.cicd.lambda_factory import LambdaFactory
 from src.cicd.notification_manager import NotificationManager
 from src.core.models.repository import Repository
@@ -34,16 +34,25 @@ class CICDStack(Stack):
 
         dev_web_repo_info: Repository = repositories.get("dev-website-repo")
         artifact_bucket_web = s3.Bucket(self, "ArtifactBucket", removal_policy=RemovalPolicy.DESTROY)
-        pipeline_manager_web = PipelineManager(self, dev_web_repo_info.stageType, artifact_bucket_web, pipeline_name="RentalPropertiesAgentCICDPipeline", repository_info=dev_web_repo_info, website_bucket=website_bucket)
+        pipeline_manager_web = PipelineManager(self, dev_web_repo_info.stageType, artifact_bucket_web, pipeline_name="RentalPropertiesAgentWeb_DEV", repository_info=dev_web_repo_info, website_bucket=website_bucket)
         pipeline_manager_web.configure_pipeline()
-
+        
+        dev_middle_tier_repo_info: Repository = repositories.get("dev-api-repo")
+        artifact_bucket_mt = s3.Bucket(self, "ArtifactBucketMT", removal_policy=RemovalPolicy.DESTROY)
+        pipeline_manager_mt = PipelineManager(self, dev_middle_tier_repo_info.stageType, artifact_bucket_mt, pipeline_name="RentalPropertiesAgentMT_DEV", repository_info=dev_middle_tier_repo_info)
+        pipeline_manager_mt.configure_pipeline()
+        
         lambda_factory = LambdaFactory(self)
-        github_lambda = lambda_factory.create_github_status_lambda(self, [pipeline_manager_web.pipeline.pipeline_arn], [artifact_bucket_web])
-        discord_lambda = lambda_factory.create_discord_notifier_lambda(self, [pipeline_manager_web.pipeline.pipeline_arn])
+        github_lambda = lambda_factory.create_github_status_lambda(self, [pipeline_manager_web.pipeline.pipeline_arn, pipeline_manager_mt.pipeline.pipeline_arn], [artifact_bucket_web, artifact_bucket_mt])
+        discord_lambda = lambda_factory.create_discord_notifier_lambda(self, [pipeline_manager_web.pipeline.pipeline_arn, pipeline_manager_mt.pipeline.pipeline_arn])
         
         dev_web_repo_info.pipeline_name = pipeline_manager_web.pipeline.pipeline_name
+        dev_middle_tier_repo_info.pipeline_name = pipeline_manager_mt.pipeline.pipeline_name
 
         notification_manager = NotificationManager(self)
         notification_manager.create_build_start_rule(dev_web_repo_info, github_lambda)
         notification_manager.create_build_success_rule(dev_web_repo_info, github_lambda, discord_lambda)
         notification_manager.create_build_failure_rule(dev_web_repo_info, github_lambda, discord_lambda)
+        notification_manager.create_build_start_rule(dev_middle_tier_repo_info, github_lambda)
+        notification_manager.create_build_success_rule(dev_middle_tier_repo_info, github_lambda, discord_lambda)
+        notification_manager.create_build_failure_rule(dev_middle_tier_repo_info, github_lambda, discord_lambda)

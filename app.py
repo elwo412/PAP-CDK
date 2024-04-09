@@ -2,7 +2,7 @@
 import os
 import aws_cdk as cdk
 from scripts.load_env import load_environmental_vars
-from src.cicd.pipeline_manager import StageManagerWeb
+from src.cicd.pipeline_manager import StageManagerWeb, StageManagerMT
 from src.core.models.repository import Repository
 
 from src.stacks.cicd_stack import CICDStack
@@ -29,6 +29,15 @@ repositories = {
         deployable=True,
         stageType=StageManagerWeb,
         code_star_connection_arn="arn:aws:codestar-connections:us-east-2:260374441616:connection/b31b9d20-3949-4c6a-b379-df087079cba6"  #aws codestar-connections list-connections
+    ),
+    "dev-api-repo": Repository(
+        name="PAP-middle-tier",
+        owner="CaerusLabs",
+        repo_name="PAP-middle-tier",
+        branch="main",
+        deployable=False,
+        stageType=StageManagerMT,
+        code_star_connection_arn="arn:aws:codestar-connections:us-east-2:260374441616:connection/b31b9d20-3949-4c6a-b379-df087079cba6"
     )
 }
 
