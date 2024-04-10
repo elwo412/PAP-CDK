@@ -8,6 +8,7 @@ from src.core.models.repository import Repository
 from src.stacks.cicd_stack import CICDStack
 from src.stacks.vpc_stack import VPCStack
 from src.stacks.website_stack import WebsiteStack
+from src.stacks.middle_tier_stack import MiddleTierStack
 
 # Load environment-specific variables
 load_environmental_vars()
@@ -35,21 +36,28 @@ repositories = {
         owner="CaerusLabs",
         repo_name="PAP-middle-tier",
         branch="main",
-        deployable=False,
+        deployable=True,
         stageType=StageManagerMT,
         code_star_connection_arn="arn:aws:codestar-connections:us-east-2:260374441616:connection/b31b9d20-3949-4c6a-b379-df087079cba6"
     )
 }
 
+vpcStack = VPCStack(app, "VPCCDKStack", env=env)
+private_lambda_instance = vpcStack.private_lambda_instance
+cdk.Tags.of(vpcStack).add("AppManagerCFNStackKey", "DevelopmentVPC")
+
 devWebStack = WebsiteStack(app, "DevWebsiteStack", updateRefererSecret=False, env=env)
 dev_site_s3_bucket = devWebStack.website_bucket
+repositories["dev-website-repo"].build_dependencies = [dev_site_s3_bucket]
 cdk.Tags.of(devWebStack).add("AppManagerCFNStackKey", "DevelopmentWebApp")
 
-cicdStack = CICDStack(app, "CiCdPipeline", repositories=repositories, website_bucket=dev_site_s3_bucket, env=env)
-cdk.Tags.of(cicdStack).add("AppManagerCFNStackKey", "CiCdPipeline")
+devMiddleTierStack = MiddleTierStack(app, "DevMiddleTierStack", private_lambda=private_lambda_instance, env=env)
+dev_lambda_function = devMiddleTierStack.lambda_function
+repositories["dev-api-repo"].build_dependencies = [dev_lambda_function]
+cdk.Tags.of(devMiddleTierStack).add("AppManagerCFNStackKey", "DevelopmentMiddleTier")
 
-vpcStack = VPCStack(app, "VPCCDKStack", env=env)
-cdk.Tags.of(vpcStack).add("AppManagerCFNStackKey", "DevelopmentVPC")
+cicdStack = CICDStack(app, "CiCdPipeline", repositories=repositories, env=env)
+cdk.Tags.of(cicdStack).add("AppManagerCFNStackKey", "CiCdPipeline")
 
 cdk.Tags.of(app).add("Project", "RentalPropertiesAgent")
 

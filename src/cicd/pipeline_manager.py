@@ -6,17 +6,17 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_lambda as lambda_,
     aws_codebuild as codebuild,
+    aws_iam as iam
 )
 from constructs import Construct
 from src.core.models.repository import Repository
 
 class PipelineManager(AbstractPipelineManager):
-    def __init__(self, scope, StageManagerType: AbstractStageManager, artifact_bucket, pipeline_name, repository_info: Repository, website_bucket: s3.Bucket = None):
+    def __init__(self, scope, StageManagerType: AbstractStageManager, artifact_bucket, pipeline_name, repository_info: Repository):
         super().__init__(scope, artifact_bucket, pipeline_name)
         self.create_pipeline()
         self.repository_info = repository_info
         self.stage_manager = StageManagerType(self._pipeline, scope)
-        self.website_bucket = website_bucket
         
     def configure_pipeline(self):
         """
@@ -31,10 +31,7 @@ class PipelineManager(AbstractPipelineManager):
         self.stage_manager.add_manual_approval_stage()
         self.stage_manager.add_build_stage(self.repository_info)
         if self.repository_info.deployable:
-            if not self.website_bucket:
-                self.stage_manager.add_deploy_stage(self.repository_info)
-            else:
-                self.stage_manager.add_deploy_stage(self.repository_info, self.website_bucket)
+            self.stage_manager.add_deploy_stage(self.repository_info)
             
     @property
     def pipeline(self):
@@ -94,7 +91,13 @@ class StageManagerWeb(AbstractStageManager):
             actions=[manual_approval_action]
         )
         
-    def add_deploy_stage(self, repo: Repository, website_bucket: s3.Bucket):
+    def add_deploy_stage(self, repo: Repository):
+        
+        # Check whether the repository has a build dependency of type s3.Bucket
+        website_bucket = repo.get_build_dependency_of_type(s3.Bucket)
+        if website_bucket is None:
+            raise ValueError("The website repository must have a build dependency of type s3.Bucket")
+        
         deploy_action = codepipeline_actions.S3DeployAction(
             action_name=f"{repo.name}Deploy",
             input=self.build_artifact_out,
@@ -220,38 +223,54 @@ class StageManagerMT(AbstractStageManager):
         )
         
     def add_deploy_stage(self, repo: Repository):
-        # Here we would add a deploy action for the MT repo
-        # Deployment to lambda function, etc.
-        pass
         
-    def create_build_spec(self):
-        # return codebuild.BuildSpec.from_object({
-        #     "version": "0.2",
-        #     "phases": {
-        #         "install": {
-        #             "runtime-versions": {
-        #                 "python": "3.8"
-        #             },
-        #             "commands": [
-        #                 "echo Installing necessary packages...",
-        #                 #"pip install -r requirements.txt" # example install command
-        #             ]
-        #         },
-        #         "pre_build": {
-        #             "commands": [
-        #                 "echo Preparing build...",
-        #                 #"pytest tests/" # example test command
-        #             ]
-        #         },
-        #         "build": {
-        #             "commands": [
-        #                 "echo Starting build...",
-        #                 #"sam build" # example build command
-        #             ]
-        #         }
-        #     },
-        #     "artifacts": {"files": []}
-        # })        
+        # Check whether the repository has a build dependency of type lambda_.Function
+        lambda_function: lambda_.Function = repo.get_build_dependency_of_type(lambda_.Function)
+        if lambda_function is None:
+            raise ValueError("The middle tier repository must have a build dependency of type lambda_.Function")        
+        
+        deploy_project = codebuild.PipelineProject(
+            self._scope,
+            f"{repo.name}LambdaDeployProject",
+            build_spec=codebuild.BuildSpec.from_object({
+                'version': '0.2',
+                'phases': {
+                    'build': {
+                        'commands': [
+                            'ls',
+                            f'aws lambda update-function-code --function-name {lambda_function.function_name} --zip-file fileb://$(ls *.zip)'
+                        ]
+                    }
+                }
+            }),
+            environment=codebuild.BuildEnvironment(
+                build_image=codebuild.LinuxBuildImage.STANDARD_7_0
+            )
+        )
+        
+        # Define the IAM policy for updating Lambda function code
+        lambda_update_policy = iam.PolicyStatement(
+            actions=["lambda:UpdateFunctionCode"],
+            resources=[lambda_function.function_arn]
+        )
+
+        # Attach the necessary permissions to the CodeBuild project's role
+        deploy_project.add_to_role_policy(lambda_update_policy)
+
+        # CodeBuild action to deploy the Lambda function
+        deploy_action = codepipeline_actions.CodeBuildAction(
+            action_name=f"{repo.name}_LambdaDeploy",
+            project=deploy_project,
+            input=self.build_artifact_out,
+        )
+
+        # Add deploy stage to the pipeline
+        self._pipeline.add_stage(
+            stage_name=f"{repo.name}_LambdaDeployStage",
+            actions=[deploy_action]
+        )
+        
+    def create_build_spec(self):      
         return codebuild.BuildSpec.from_object({
             "version": "0.2",
             "phases": {
