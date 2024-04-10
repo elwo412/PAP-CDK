@@ -5,16 +5,19 @@ from aws_cdk import RemovalPolicy
 from constructs import Construct
 
 class RdsInstance(Construct):
-    def __init__(self, scope: Construct, id: str, vpc: ec2.Vpc, bastion_sg: ec2.SecurityGroup):
+    def __init__(self, scope: Construct, id: str, vpc: ec2.Vpc, bastion_sg: ec2.SecurityGroup, vpc_subnet: ec2.SubnetSelection):
         super().__init__(scope, id)
+        
+        self.vpc = vpc
+        self.vpc_subnet = vpc_subnet
 
         # Define the RDS Security Group
-        rds_sg = ec2.SecurityGroup(
+        self.rds_sg = ec2.SecurityGroup(
             self, "RDSSecurityGroup",
-            vpc=vpc,
+            vpc=self.vpc,
             allow_all_outbound=True
         )
-        rds_sg.add_ingress_rule(
+        self.rds_sg.add_ingress_rule(
             bastion_sg,
             ec2.Port.tcp(5432),
             "Allow PostgreSQL access from the bastion host"
@@ -28,19 +31,23 @@ class RdsInstance(Construct):
 
         # Create the credentials
         #secret_creds_db = rds.Credentials.from_username("postgreAdmin", password=password_secret_value)
-        secret_creds_db = rds.Credentials.from_generated_secret("postgreAdmin", secret_name="dbdev/psql/credentials-LT8Z1W")
-
-        # Define the RDS instance
+        self.secret_creds_db = rds.Credentials.from_generated_secret("postgreAdmin", secret_name="dbdev/psql/credentials-LT8Z1W")
+        
+    def set_rds_sg_ingress_rule(self, peer: ec2.SecurityGroup, port: ec2.Port, description: str):
+        self.rds_sg.add_ingress_rule(peer, port, description)
+        
+    def create(self):
+                # Define the RDS instance
         self.instance = rds.DatabaseInstance(
             self, "MyRDSInstance",
             engine=rds.DatabaseInstanceEngine.postgres(
                 version=rds.PostgresEngineVersion.VER_15_4
             ),
-            vpc=vpc,
-            credentials=secret_creds_db,
+            vpc=self.vpc,
+            credentials=self.secret_creds_db,
             database_name="dev",
             instance_type=ec2.InstanceType.of(ec2.InstanceClass.BURSTABLE3, ec2.InstanceSize.MICRO),
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PRIVATE_WITH_NAT),
-            security_groups=[rds_sg],
+            vpc_subnets=self.vpc_subnet,
+            security_groups=[self.rds_sg],
             removal_policy=RemovalPolicy.RETAIN
         )

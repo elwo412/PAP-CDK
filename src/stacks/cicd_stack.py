@@ -29,12 +29,12 @@ from src.cicd.notification_manager import NotificationManager
 from src.core.models.repository import Repository
 
 class CICDStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, repositories: dict, website_bucket: s3.Bucket, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, repositories: dict, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         dev_web_repo_info: Repository = repositories.get("dev-website-repo")
         artifact_bucket_web = s3.Bucket(self, "ArtifactBucket", removal_policy=RemovalPolicy.DESTROY)
-        pipeline_manager_web = PipelineManager(self, dev_web_repo_info.stageType, artifact_bucket_web, pipeline_name="RentalPropertiesAgentWeb_DEV", repository_info=dev_web_repo_info, website_bucket=website_bucket)
+        pipeline_manager_web = PipelineManager(self, dev_web_repo_info.stageType, artifact_bucket_web, pipeline_name="RentalPropertiesAgentWeb_DEV", repository_info=dev_web_repo_info)
         pipeline_manager_web.configure_pipeline()
         
         dev_middle_tier_repo_info: Repository = repositories.get("dev-api-repo")
