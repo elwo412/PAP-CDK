@@ -227,7 +227,7 @@ class StageManagerMT(AbstractStageManager):
         # Check whether the repository has a build dependency of type lambda_.Function
         lambda_function: lambda_.Function = repo.get_build_dependency_of_type(lambda_.Function)
         if lambda_function is None:
-            raise ValueError("The middle tier repository must have a build dependency of type lambda_.Function")        
+            raise ValueError("The middle tier repository must have a build dependency of type lambda_.Function")
         
         deploy_project = codebuild.PipelineProject(
             self._scope,
@@ -239,6 +239,7 @@ class StageManagerMT(AbstractStageManager):
                         'commands': [
                             'ls',
                             f'aws lambda update-function-code --function-name {lambda_function.function_name} --zip-file fileb://$(ls *.zip)'
+                            # aws apigateway put-rest-api --rest-api-id <your-api-id> --mode overwrite --body 'file://swagger.json'
                         ]
                     }
                 }
@@ -292,7 +293,7 @@ class StageManagerMT(AbstractStageManager):
                 "build": {
                     "commands": [
                         "echo Building the application...",
-                        "python3 scripts/package_fastapi.py dev",
+                        "python3 RPA/app.py --mode build",
                         "echo Finished building the application..."
                     ]
                 }
