@@ -6,7 +6,8 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_lambda as lambda_,
     aws_codebuild as codebuild,
-    aws_iam as iam
+    aws_iam as iam,
+    aws_apigateway as apigateway,
 )
 from constructs import Construct
 from src.core.models.repository import Repository
@@ -193,11 +194,15 @@ class StageManagerMT(AbstractStageManager):
         repo.source_stage_name = CI_stage_name
 
     def add_build_stage(self, repo: Repository):
+        lambda_function: lambda_.Function = repo.get_build_dependency_of_type(lambda_.Function)
+        if lambda_function is None:
+            raise ValueError("The middle tier repository must have a build dependency of type lambda_.Function")
+        
         self.build_artifact_out = codepipeline.Artifact(f"{repo.name}_BuildOutput")
         build_project = codebuild.PipelineProject(
             self._scope, 
             f"{repo.name}BuildProject",
-            build_spec=self.create_build_spec(), 
+            build_spec=self.create_build_spec(lambda_function), 
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0
             )
@@ -229,6 +234,10 @@ class StageManagerMT(AbstractStageManager):
         if lambda_function is None:
             raise ValueError("The middle tier repository must have a build dependency of type lambda_.Function")
         
+        api_gateway: apigateway.RestApi = repo.get_build_dependency_of_type(apigateway.RestApi)
+        if api_gateway is None:
+            raise ValueError("The middle tier repository must have a build dependency of type apigateway.RestApi")
+        
         deploy_project = codebuild.PipelineProject(
             self._scope,
             f"{repo.name}LambdaDeployProject",
@@ -238,8 +247,7 @@ class StageManagerMT(AbstractStageManager):
                     'build': {
                         'commands': [
                             'ls',
-                            f'aws lambda update-function-code --function-name {lambda_function.function_name} --zip-file fileb://$(ls *.zip)'
-                            # aws apigateway put-rest-api --rest-api-id <your-api-id> --mode overwrite --body 'file://swagger.json'
+                            f'aws lambda update-function-code --function-name {lambda_function.function_name} --zip-file fileb://$(ls *.zip | head -n 1)'
                         ]
                     }
                 }
@@ -254,9 +262,16 @@ class StageManagerMT(AbstractStageManager):
             actions=["lambda:UpdateFunctionCode"],
             resources=[lambda_function.function_arn]
         )
-
+        
+        # Define the IAM policy for updating API Gateway
+        apigateway_update_policy = iam.PolicyStatement(
+            actions=["apigateway:PutRestApi", "apigateway:PUT",],
+            resources=[f"arn:aws:apigateway:us-east-1::/restapis/{api_gateway.rest_api_id}"]
+        )
+        
         # Attach the necessary permissions to the CodeBuild project's role
         deploy_project.add_to_role_policy(lambda_update_policy)
+        deploy_project.add_to_role_policy(apigateway_update_policy)
 
         # CodeBuild action to deploy the Lambda function
         deploy_action = codepipeline_actions.CodeBuildAction(
@@ -271,7 +286,7 @@ class StageManagerMT(AbstractStageManager):
             actions=[deploy_action]
         )
         
-    def create_build_spec(self):      
+    def create_build_spec(self, lambda_function: lambda_.Function):      
         return codebuild.BuildSpec.from_object({
             "version": "0.2",
             "phases": {
@@ -299,7 +314,7 @@ class StageManagerMT(AbstractStageManager):
                 "build": {
                     "commands": [
                         "echo Building the application...",
-                        "python3 RPA/app.py --mode build",
+                        f"python3 RPA/app.py --mode build", # --lambda-uri {lambda_function.function_arn}",
                         "echo Finished building the application..."
                     ]
                 }

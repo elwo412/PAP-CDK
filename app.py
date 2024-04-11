@@ -48,12 +48,14 @@ cdk.Tags.of(vpcStack).add("AppManagerCFNStackKey", "DevelopmentVPC")
 
 devWebStack = WebsiteStack(app, "DevWebsiteStack", updateRefererSecret=False, env=env)
 dev_site_s3_bucket = devWebStack.website_bucket
-repositories["dev-website-repo"].build_dependencies = [dev_site_s3_bucket]
+repositories["dev-website-repo"].build_dependencies.append(dev_site_s3_bucket)
 cdk.Tags.of(devWebStack).add("AppManagerCFNStackKey", "DevelopmentWebApp")
 
 devMiddleTierStack = MiddleTierStack(app, "DevMiddleTierStack", private_lambda=private_lambda_instance, env=env)
 dev_lambda_function = devMiddleTierStack.lambda_function
-repositories["dev-api-repo"].build_dependencies = [dev_lambda_function]
+dev_api_gateway = devMiddleTierStack.api_gateway
+repositories["dev-api-repo"].build_dependencies.append(dev_lambda_function)
+repositories["dev-api-repo"].build_dependencies.append(dev_api_gateway)
 cdk.Tags.of(devMiddleTierStack).add("AppManagerCFNStackKey", "DevelopmentMiddleTier")
 
 cicdStack = CICDStack(app, "CiCdPipeline", repositories=repositories, env=env)

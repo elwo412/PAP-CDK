@@ -3,6 +3,8 @@ from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_logs
 from aws_cdk import aws_apigateway as apigateway
 from aws_cdk import aws_iam as iam
+from aws_cdk import Duration
+from aws_cdk import aws_secretsmanager as secretsmanager
 from constructs import Construct
 
 class LambdaInstance(Construct):
@@ -32,6 +34,16 @@ class LambdaInstance(Construct):
         self.lambda_sg.add_egress_rule(peer, connection, description)
         
     def create(self):
+        # Get the rds credentials from Secrets Manager at secret name of dbdev/postgre/credentials
+        # this will have username, host, and password
+        full_secret_arn = "arn:aws:secretsmanager:us-east-1:260374441616:secret:dbdev/postgre/credentials-wjpT0A"
+        secret_access_policy_statement = iam.PolicyStatement(
+            actions=["secretsmanager:GetSecretValue"],
+            resources=[full_secret_arn],
+            effect=iam.Effect.ALLOW
+        )
+        self.execution_role.add_to_policy(secret_access_policy_statement)
+        
         # Create the lambda function
         self._lambda_function = lambda_.Function(
             self, f"FastApiLambda-DEV",
@@ -49,21 +61,9 @@ class LambdaInstance(Construct):
             ), self.lambda_sg],
             environment={
                 # environment variables
-                "POSTGRES_USER" : "postgres",
-                "POSTGRES_PASS" : "Worrall10$",
-                "POSTGRES_URI" : "localhost",
+                "DB_CREDENTIALS_SECRET_ARN": full_secret_arn,
+                "ENV": "dev",
                 "POSTGRES_DB" : "rpa"
-            }
+            },
+            timeout=Duration.seconds(10)
         )
-        
-        # This should be moved away from the vpc stack
-        
-        # Create the API Gateway REST API
-        api = apigateway.LambdaRestApi(
-            self, "FastApiEndpoint",
-            handler=self._lambda_function,
-            proxy=False  # Set to false to manually define the API model
-        )
-
-        # Define the GET method for the root resource '/'
-        api.root.add_method('GET')

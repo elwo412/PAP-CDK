@@ -13,6 +13,7 @@ from aws_cdk import (
     aws_events as events,
     aws_events_targets as targets,
     aws_iam as iam,
+    aws_apigateway as apigateway,
     aws_logs,
     SecretValue,
     RemovalPolicy,
@@ -24,6 +25,17 @@ class MiddleTierStack(Stack):
 
         self._lambda_function = private_lambda
         
+        # Create the API Gateway REST API
+        self.rest_api = apigateway.LambdaRestApi(
+            self, "FastApiEndpoint",
+            handler=self._lambda_function,
+            proxy=True
+        )
+        
     @property
     def lambda_function(self) -> lambda_.Function:
         return self._lambda_function
+    
+    @property
+    def api_gateway(self) -> apigateway.RestApi:
+        return self.rest_api
