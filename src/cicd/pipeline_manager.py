@@ -281,6 +281,12 @@ class StageManagerMT(AbstractStageManager):
                     },
                     "commands": [
                         "echo Installing some dependencies...",
+                        "pip3 install -r requirements.txt",
+                        # set some dummy environment variables for the build
+                        "export POSTGRES_URI='localhost'",
+                        "export POSTGRES_DB='dev'",
+                        "export POSTGRES_USER='admin'",
+                        "export POSTGRES_PASS='password'",
                         "echo Finished installing dependencies..."
                     ]
                 },
