@@ -31,7 +31,7 @@ class RdsInstance(Construct):
 
         # Create the credentials
         #secret_creds_db = rds.Credentials.from_username("postgreAdmin", password=password_secret_value)
-        self.secret_creds_db = rds.Credentials.from_generated_secret("postgreAdmin", secret_name="dbdev/psql/credentials-LT8Z1W")
+        self.secret_creds_db = rds.Credentials.from_generated_secret("postgreAdmin", secret_name="dbdev/postgre/credentials")
         
     def set_rds_sg_ingress_rule(self, peer: ec2.SecurityGroup, port: ec2.Port, description: str):
         self.rds_sg.add_ingress_rule(peer, port, description)

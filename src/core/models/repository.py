@@ -16,21 +16,15 @@ class Repository(BaseModel):
     source_stage_name: str = None
     build_project_name: str = None
     pipeline_name: str = None
-    build_dependencies: Optional[List[Any]] = None
+    build_dependencies: List[Any] = []
     
     class Config:
         arbitrary_types_allowed = True
         
     def has_build_dependency_of_type(self, dependency_type: Type) -> bool:
-        if self.build_dependencies is None:
-            return False
-
         return any(isinstance(dependency, dependency_type) for dependency in self.build_dependencies)
     
     def get_build_dependency_of_type(self, dependency_type: Type) -> Optional[Any]:
-        if self.build_dependencies is None:
-            return None
-
         for dependency in self.build_dependencies:
             if isinstance(dependency, dependency_type):
                 return dependency

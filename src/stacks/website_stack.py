@@ -19,7 +19,6 @@ class WebsiteStack(Stack):
 
         self.website_manager.setup_s3()
         self.website_manager.setup_cloudfront()
-        self.website_manager.setup_authentication()
         # self.setup_route53()  # Uncomment if Route 53 is needed for the development environment
 
     @property
