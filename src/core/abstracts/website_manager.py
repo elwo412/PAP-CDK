@@ -20,13 +20,6 @@ class WebsiteManagerAbstract(ABC):
         pass
 
     @abstractmethod
-    def setup_authentication(self):
-        """
-        Setup authentication mechanism (e.g., Cognito for user authentication).
-        """
-        pass
-
-    @abstractmethod
     def setup_route53(self):
         """
         Setup Route 53 for domain management.

@@ -8,6 +8,7 @@ from aws_cdk import (
     aws_codebuild as codebuild,
     aws_iam as iam,
     aws_apigateway as apigateway,
+    aws_cognito as cognito
 )
 from constructs import Construct
 from src.core.models.repository import Repository
@@ -197,12 +198,15 @@ class StageManagerMT(AbstractStageManager):
         lambda_function: lambda_.Function = repo.get_build_dependency_of_type(lambda_.Function)
         if lambda_function is None:
             raise ValueError("The middle tier repository must have a build dependency of type lambda_.Function")
+        cognito_user_pool: cognito.UserPool = repo.get_build_dependency_of_type(cognito.UserPool)
+        if cognito_user_pool is None:
+            raise ValueError("The middle tier repository must have a build dependency of type cognito.UserPool")
         
         self.build_artifact_out = codepipeline.Artifact(f"{repo.name}_BuildOutput")
         build_project = codebuild.PipelineProject(
             self._scope, 
             f"{repo.name}BuildProject",
-            build_spec=self.create_build_spec(lambda_function), 
+            build_spec=self.create_build_spec(lambda_function, cognito_user_pool), 
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxBuildImage.STANDARD_7_0
             )
@@ -247,7 +251,10 @@ class StageManagerMT(AbstractStageManager):
                     'build': {
                         'commands': [
                             'ls',
-                            f'aws lambda update-function-code --function-name {lambda_function.function_name} --zip-file fileb://$(ls *.zip | head -n 1)'
+                            'export ENV="dev"',
+                            f'aws lambda update-function-code --function-name {lambda_function.function_name} --zip-file fileb://$(ls *.zip | head -n 1)',
+                            f'aws apigateway put-rest-api --cli-binary-format raw-in-base64-out --rest-api-id {api_gateway.rest_api_id} --mode overwrite --body "file://$(ls *api.json)"',
+                            f'aws lambda add-permission --function-name {lambda_function.function_name} --statement-id "ApiGatewayInvokeAllEndpoints" --action "lambda:InvokeFunction" --principal "apigateway.amazonaws.com" --source-arn "{api_gateway.arn_for_execute_api()}" --output text'
                         ]
                     }
                 }
@@ -259,7 +266,7 @@ class StageManagerMT(AbstractStageManager):
         
         # Define the IAM policy for updating Lambda function code
         lambda_update_policy = iam.PolicyStatement(
-            actions=["lambda:UpdateFunctionCode"],
+            actions=["lambda:UpdateFunctionCode", "lambda:AddPermission"],
             resources=[lambda_function.function_arn]
         )
         
@@ -286,7 +293,7 @@ class StageManagerMT(AbstractStageManager):
             actions=[deploy_action]
         )
         
-    def create_build_spec(self, lambda_function: lambda_.Function):      
+    def create_build_spec(self, lambda_function: lambda_.Function, cognito_pool: cognito.UserPool):      
         return codebuild.BuildSpec.from_object({
             "version": "0.2",
             "phases": {
@@ -298,6 +305,8 @@ class StageManagerMT(AbstractStageManager):
                         "echo Installing some dependencies...",
                         "pip3 install -r requirements.txt",
                         # set some dummy environment variables for the build
+                        "export ENV='dev'",
+                        "export BUILD='true'",
                         "export POSTGRES_URI='localhost'",
                         "export POSTGRES_DB='dev'",
                         "export POSTGRES_USER='admin'",
@@ -314,8 +323,10 @@ class StageManagerMT(AbstractStageManager):
                 "build": {
                     "commands": [
                         "echo Building the application...",
-                        f"python3 RPA/app.py --mode build", # --lambda-uri {lambda_function.function_arn}",
-                        "echo Finished building the application..."
+                        "cd RPA/",
+                        f"python3 app.py --mode build --lambda-arn {lambda_function.function_arn} --cognito-arn {cognito_pool.user_pool_arn}",
+                        "echo Finished building the application...",
+                        "cd .."
                     ]
                 }
             },

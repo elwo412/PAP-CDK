@@ -54,8 +54,10 @@ cdk.Tags.of(devWebStack).add("AppManagerCFNStackKey", "DevelopmentWebApp")
 devMiddleTierStack = MiddleTierStack(app, "DevMiddleTierStack", private_lambda=private_lambda_instance, env=env)
 dev_lambda_function = devMiddleTierStack.lambda_function
 dev_api_gateway = devMiddleTierStack.api_gateway
+dev_cognito_user_pool = devMiddleTierStack.cognito_user_pool
 repositories["dev-api-repo"].build_dependencies.append(dev_lambda_function)
 repositories["dev-api-repo"].build_dependencies.append(dev_api_gateway)
+repositories["dev-api-repo"].build_dependencies.append(dev_cognito_user_pool)
 cdk.Tags.of(devMiddleTierStack).add("AppManagerCFNStackKey", "DevelopmentMiddleTier")
 
 cicdStack = CICDStack(app, "CiCdPipeline", repositories=repositories, env=env)
